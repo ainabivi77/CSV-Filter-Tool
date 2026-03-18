@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CSV Filter Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root{--bg:#0b0c10;--surface:#13151c;--surface2:#1c1f2b;--border:#262a38;--accent:#4fffb0;--accent2:#00c8ff;--danger:#ff4f6b;--text:#e8eaf2;--muted:#6b7094;--font-head:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;--radius:10px;--trans:0.2s ease;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-head);min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(79,255,176,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(79,255,176,.03) 1px,transparent 1px);background-size:40px 40px;}
+  .wrapper{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:40px 24px 80px;}
+  header{margin-bottom:40px;}
+  .logo-row{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
+  .logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:grid;place-items:center;font-size:18px;}
+  h1{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:800;letter-spacing:-.5px;}
+  h1 span{color:var(--accent);}
+  .subtitle{color:var(--muted);font-size:.85rem;font-family:var(--font-mono);}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;margin-bottom:18px;}
+  .card-title{font-size:.65rem;font-family:var(--font-mono);color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+  .card-title::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);}
+  #drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:border-color var(--trans),background var(--trans);position:relative;}
+  #drop-zone:hover,#drop-zone.drag-over{border-color:var(--accent);background:rgba(79,255,176,.04);}
+  #drop-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .drop-icon{font-size:2.2rem;margin-bottom:12px;}.drop-text{font-size:1rem;font-weight:600;margin-bottom:4px;}.drop-sub{font-size:.78rem;color:var(--muted);font-family:var(--font-mono);}
+  #file-info{display:none;margin-top:14px;background:var(--surface2);border:1px solid var(--border);border-radius:50px;padding:7px 18px;font-family:var(--font-mono);font-size:.8rem;color:var(--accent);width:fit-content;margin-inline:auto;align-items:center;gap:8px;}
+  #file-info.visible{display:flex;}
+  #progress-section{display:none;margin-top:16px;}#progress-section.visible{display:block;}
+  .progress-label{font-family:var(--font-mono);font-size:.78rem;color:var(--muted);margin-bottom:7px;display:flex;justify-content:space-between;}
+  .progress-bar-track{background:var(--surface2);border-radius:50px;height:5px;overflow:hidden;}
+  .progress-bar-fill{height:100%;border-radius:50px;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;transition:width .2s ease;}
+  .filter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+  .filter-block{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;transition:border-color var(--trans);}
+  .filter-block.active{border-color:var(--accent2);}
+  .filter-block-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .filter-col-name{font-size:.62rem;font-family:var(--font-mono);color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;}
+  .filter-clear-btn{background:none;border:none;color:var(--muted);font-size:.72rem;cursor:pointer;padding:2px 7px;border-radius:4px;font-family:var(--font-mono);transition:color var(--trans);display:none;}
+  .filter-clear-btn:hover{color:var(--danger);}
+  .filter-block.active .filter-clear-btn{display:inline;}
+  .filter-mode-tabs{display:flex;gap:3px;margin-bottom:9px;background:var(--bg);border-radius:6px;padding:3px;}
+  .filter-mode-tab{flex:1;padding:5px 4px;border:none;border-radius:4px;font-family:var(--font-mono);font-size:.62rem;cursor:pointer;background:transparent;color:var(--muted);transition:all var(--trans);white-space:nowrap;}
+  .filter-mode-tab.active{background:var(--surface2);color:var(--accent2);}
+  .filter-inputs{display:flex;flex-direction:column;gap:7px;}
+  .filter-inputs input[type="text"],.filter-inputs input[type="date"],.filter-inputs select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:.8rem;padding:8px 12px;outline:none;transition:border-color var(--trans);color-scheme:dark;}
+  .filter-inputs input:focus,.filter-inputs select:focus{border-color:var(--accent2);}
+  .filter-inputs input::placeholder{color:var(--muted);}
+  .filter-inputs select option{background:var(--surface2);}
+  .date-range-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .date-range-row label{font-size:.6rem;color:var(--muted);font-family:var(--font-mono);display:block;margin-bottom:3px;}
+  .quick-dates{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+  .qd-btn{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 9px;font-family:var(--font-mono);font-size:.65rem;color:var(--muted);cursor:pointer;transition:all var(--trans);}
+  .qd-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .qd-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(79,255,176,.08);}
+  #active-filters-summary{display:none;margin-top:14px;flex-wrap:wrap;gap:6px;align-items:center;}
+  #active-filters-summary.visible{display:flex;}
+  .summary-label{font-family:var(--font-mono);font-size:.7rem;color:var(--muted);}
+  .filter-tag{display:inline-flex;align-items:center;background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);border-radius:50px;padding:3px 10px;font-family:var(--font-mono);font-size:.68rem;color:var(--accent2);}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 22px;border-radius:8px;font-family:var(--font-head);font-size:.88rem;font-weight:700;cursor:pointer;border:none;transition:all var(--trans);}
+  .btn-primary{background:var(--accent);color:#0b0c10;}
+  .btn-primary:hover:not(:disabled){background:#6fffbc;box-shadow:0 0 18px rgba(79,255,176,.35);transform:translateY(-1px);}
+  .btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn-secondary:hover:not(:disabled){border-color:var(--accent2);color:var(--accent2);}
+  .btn-download{background:var(--accent2);color:#0b0c10;}
+  .btn-download:hover{background:#33d4ff;box-shadow:0 0 18px rgba(0,200,255,.35);transform:translateY(-1px);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  #results-section{display:none;}#results-section.visible{display:block;}
+  .stats-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;}
+  .stat-chip{background:var(--surface2);border:1px solid var(--border);border-radius:50px;padding:5px 16px;font-family:var(--font-mono);font-size:.78rem;display:flex;align-items:center;gap:6px;}
+  .stat-chip .num{color:var(--accent);font-weight:700;}
+  .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);max-height:400px;}
+  table{width:100%;border-collapse:collapse;font-size:.76rem;font-family:var(--font-mono);}
+  thead tr{background:var(--surface2);position:sticky;top:0;z-index:2;}
+  th{padding:10px 14px;text-align:left;color:var(--accent2);font-weight:500;white-space:nowrap;border-bottom:1px solid var(--border);}
+  td{padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.04);white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;}
+  tbody tr:hover{background:rgba(255,255,255,.025);}
+  #toast{position:fixed;bottom:24px;right:24px;z-index:999;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-family:var(--font-mono);font-size:.82rem;max-width:340px;transform:translateY(80px);opacity:0;transition:all .3s ease;pointer-events:none;}
+  #toast.show{transform:translateY(0);opacity:1;}
+  #toast.success{border-color:var(--accent);color:var(--accent);}
+  #toast.error{border-color:var(--danger);color:var(--danger);}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="logo-row"><div class="logo-icon">&#x26A1;</div><h1>CSV <span>Filter</span> Tool</h1></div>
+    <p class="subtitle">// LinkedIn messages export &middot; procesado 100% local</p>
+  </header>
+
+  <div class="card">
+    <div class="card-title">01 &mdash; Cargar archivo CSV</div>
+    <div id="drop-zone">
+      <input type="file" id="csv-input" accept=".csv"/>
+      <div class="drop-icon">&#x1F4C2;</div>
+      <div class="drop-text">Arrastra tu CSV aqui o haz clic para seleccionar</div>
+      <div class="drop-sub">Procesado en tu navegador &middot; no se sube a ningun servidor</div>
+    </div>
+    <div id="file-info"><span>&#x1F4C4;</span><span id="file-name-label"></span><span id="file-size-label" style="color:var(--muted)"></span><button id="btn-remove-file" onclick="removeFile()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;margin-left:8px;font-family:var(--font-mono);transition:color var(--trans);" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--muted)'">&#x2715;</button></div>
+    <div id="progress-section">
+      <div class="progress-label"><span id="progress-text">Leyendo...</span><span id="progress-pct">0%</span></div>
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">02 &mdash; Filtros</div>
+    <div class="filter-grid" id="filter-grid"></div>
+    <div id="active-filters-summary"><span class="summary-label">Filtros activos:&nbsp;</span><span id="summary-tags"></span></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-filter" disabled>&#x26A1; Aplicar filtros</button>
+      <button class="btn btn-secondary" id="btn-clear-all">&#x2715; Limpiar todo</button>
+    </div>
+  </div>
+
+  <div class="card" id="results-section">
+    <div class="card-title">03 &mdash; Resultados</div>
+    <div class="stats-row">
+      <div class="stat-chip">Encontradas: <span class="num" id="stat-match">-</span></div>
+      <div class="stat-chip">Total: <span class="num" id="stat-total">-</span></div>
+    </div>
+    <div class="table-wrap"><table><thead id="results-thead"></thead><tbody id="results-tbody"></tbody></table></div>
+    <div class="btn-row" style="margin-top:18px;">
+      <button class="btn btn-download" id="btn-download">&#x2B07; Descargar CSV filtrado</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+var COLUMN_DEFS = [
+  { name:'CONVERSATION ID',        type:'text' },
+  { name:'CONVERSATION TITLE',     type:'text' },
+  { name:'FROM',                   type:'text' },
+  { name:'SENDER PROFILE URL',     type:'text' },
+  { name:'TO',                     type:'text' },
+  { name:'RECIPIENT PROFILE URLS', type:'text' },
+  { name:'DATE',                   type:'date' },
+  { name:'SUBJECT',                type:'text' },
+  { name:'CONTENT',                type:'text' },
+  { name:'FOLDER',                 type:'select', options:['INBOX','SENT','ARCHIVE','OTHER'] },
+  { name:'ATTACHMENTS',            type:'boolean' }
+];
+
+var csvRows    = [];
+var filteredCsv = '';
+var filterState = {};
+
+// ── FILE LOADING ──────────────────────────────────────────
+var dropZone    = document.getElementById('drop-zone');
+var csvInput    = document.getElementById('csv-input');
+var fileInfo    = document.getElementById('file-info');
+var fileNameLbl = document.getElementById('file-name-label');
+var fileSizeLbl = document.getElementById('file-size-label');
+var progressSec = document.getElementById('progress-section');
+var progressBar = document.getElementById('progress-bar');
+var progressTxt = document.getElementById('progress-text');
+var progressPct = document.getElementById('progress-pct');
+var btnFilter   = document.getElementById('btn-filter');
+
+dropZone.addEventListener('dragover',function(e){e.preventDefault();dropZone.classList.add('drag-over');});
+dropZone.addEventListener('dragleave',function(){dropZone.classList.remove('drag-over');});
+dropZone.addEventListener('drop',function(e){e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+csvInput.addEventListener('change',function(){if(csvInput.files[0])handleFile(csvInput.files[0]);});
+
+function removeFile() {
+  csvRows = []; filteredCsv = '';
+  fileInfo.classList.remove('visible');
+  fileNameLbl.textContent = '';
+  fileSizeLbl.textContent = '';
+  csvInput.value = '';
+  btnFilter.disabled = true;
+  document.getElementById('results-section').classList.remove('visible');
+  document.getElementById('active-filters-summary').classList.remove('visible');
+  showToast('Archivo eliminado. Carga uno nuevo.', 'success');
+}
+
+function handleFile(file) {
+  if (!file.name.endsWith('.csv')) { showToast('Solo se aceptan archivos .csv','error'); return; }
+  fileNameLbl.textContent = file.name;
+  fileSizeLbl.textContent = ' (' + formatSize(file.size) + ')';
+  fileInfo.classList.add('visible');
+  btnFilter.disabled = true; csvRows = [];
+  progressSec.classList.add('visible'); setProgress(0,'Leyendo archivo...');
+  var reader = new FileReader();
+  reader.onprogress = function(e){ if(e.lengthComputable) setProgress(Math.round((e.loaded/e.total)*80),'Leyendo archivo...'); };
+  reader.onload = function(e){
+    setProgress(85,'Procesando filas...');
+    setTimeout(function(){
+      try {
+        parseCSV(e.target.result);
+        setProgress(100, csvRows.length.toLocaleString() + ' mensajes cargados');
+        btnFilter.disabled = false;
+        showToast(csvRows.length.toLocaleString() + ' mensajes cargados','success');
+        setTimeout(function(){ progressSec.classList.remove('visible'); }, 1500);
+      } catch(err) {
+        showToast('Error: ' + err.message,'error');
+        progressSec.classList.remove('visible');
+      }
+    }, 50);
+  };
+  reader.onerror = function(){ showToast('Error al leer el archivo','error'); progressSec.classList.remove('visible'); };
+  reader.readAsText(file,'UTF-8');
+}
+
+// ── CSV PARSER — LinkedIn block-based ────────────────────
+// LinkedIn CSV structure:
+//   Fixed cols 0-7: ID, TITLE, FROM, FROM_URL, TO, TO_URL, DATE, SUBJECT  (never contain newlines)
+//   Col 8: CONTENT  (may contain real \n and unbalanced quotes)
+//   Col 9: FOLDER   (INBOX / SENT / ARCHIVE / OTHER / empty)
+//   Col 10: ATTACHMENTS
+//
+// Strategy:
+//   1. Split file by lines starting with "2-" → each block = one message
+//   2. First line of block has cols 0-7 as clean comma-separated values
+//   3. Everything after col 7 in the block is CONTENT + ,FOLDER,ATTACHMENTS
+//   4. Find FOLDER by searching the END of the block for ,INBOX|SENT|ARCHIVE|OTHER|,
+//   5. Everything before that suffix = CONTENT (strip surrounding quotes)
+
+var FOLDER_RE = /,"{0,2}(INBOX|SENT|ARCHIVE|OTHER)"{0,2},([^\n]*)$/;
+
+function parseCSV(raw) {
+  // Strip BOM in all forms
+  raw = raw.replace(/^[\uFEFF\xEF\xBB\xBF]+/, "");
+
+
+  console.log("RAW first 50 chars:", JSON.stringify(raw.substring(0,50)));
+  console.log("RAW charCode 0:", raw.charCodeAt(0));
+  var lines = raw.split('\n');
+  if (lines.length < 2) throw new Error('El CSV esta vacio.');
+
+  // Verify headers
+  var headers = lines[0].replace(/\r/g,"").split(',').map(function(h){ return h.trim().replace(/^"|\"$/g,"").toUpperCase(); });
+  var hasRequired = headers.indexOf('CONVERSATION ID') !== -1 && headers.indexOf('FROM') !== -1;
+  if (!hasRequired) throw new Error('No se encontraron las columnas requeridas. Cabeceras: ' + headers.slice(0,4).join(' | '));
+
+  // Group lines into blocks: each block starts with a line beginning with "2-"
+  var blocks = [];
+  var current = null;
+  for (var i = 1; i < lines.length; i++) {
+    var line = lines[i];
+    if (line.charAt(line.length-1) === '\r') line = line.slice(0,-1);
+    // Lines may start with a quote: "2-...
+    // Test for block start WITHOUT modifying line (parseCsvLine needs the quotes intact)
+    var testLine = (line.charAt(0) === '"') ? line.slice(1) : line;
+    if (testLine.indexOf('2-') === 0) {
+      // Keep original line with quotes for correct CSV parsing
+      if (current !== null) blocks.push(current);
+      current = [line];
+    } else {
+      if (current !== null) current.push(line);
+    }
+  }
+  if (current !== null) blocks.push(current);
+  console.log("Blocks found:", blocks.length);
+  if (blocks.length === 0) throw new Error("No se detectaron filas validas. Primera linea de datos: " + (lines[1] ? lines[1].substring(0,30) : "vacia"));
+
+  csvRows = [];
+  for (var b = 0; b < blocks.length; b++) {
+    var row = parseBlock(blocks[b]);
+    if (row) csvRows.push(row);
+  }
+}
+
+function parseBlock(block) {
+  var firstLine = block[0];
+
+  // Use a proper CSV parser to split the first line into cells
+  // parseCsvLine handles quoted fields correctly and returns clean values
+  var parts = parseCsvLine(firstLine);
+  if (parts.length < 8) return null;
+
+  // parseCsvLine already strips surrounding quotes, just trim whitespace
+  function uq(s){ return (s||'').trim(); }
+  var id      = uq(parts[0]);
+  var title   = uq(parts[1]);
+  var from    = uq(parts[2]);
+  var fromUrl = uq(parts[3]);
+  var to      = uq(parts[4]);
+  var toUrl   = uq(parts[5]);
+  var date    = uq(parts[6]);
+  var subject = uq(parts[7]);
+
+  // Everything after the 8 fixed fields on the first line, plus continuation lines
+  // Since parseCsvLine correctly parsed the line, parts[8] onward are the remaining fields
+  // But CONTENT may span multiple lines (continuation blocks), so we reconstruct:
+  // - If parts.length >= 11: all fields are on this line, properly parsed
+  // - If parts.length < 11: CONTENT continues on next lines
+  if (parts.length >= 11) {
+    // Fully parsed in one line - extract directly
+    var content     = uq(parts[8]);
+    var folder      = uq(parts[9]);
+    var attachments = uq(parts[10]);
+    return {
+      'CONVERSATION ID':        id,
+      'CONVERSATION TITLE':     title,
+      'FROM':                   from,
+      'SENDER PROFILE URL':     fromUrl,
+      'TO':                     to,
+      'RECIPIENT PROFILE URLS': toUrl,
+      'DATE':                   date,
+      'SUBJECT':                subject,
+      'CONTENT':                content,
+      'FOLDER':                 folder,
+      'ATTACHMENTS':            attachments
+    };
+  }
+
+  // Content spans multiple lines
+  // parts[8] is the start of CONTENT already decoded by parseCsvLine
+  // Continuation lines are raw text appended to CONTENT
+  var afterFixed = parts.slice(8).join(',');
+  var continuation = block.length > 1 ? block.slice(1).join('\n') : '';
+  var combined = afterFixed + (continuation ? '\n' + continuation : '');
+  combined = combined.replace(/\r/g,'').replace(/\n+$/,'');
+
+  // Find FOLDER at the end: pattern is ,FOLDER,ATTACHMENTS
+  var folder = '';
+  var attachments = '';
+  var content = combined;
+
+  var m = FOLDER_RE.exec(combined);
+  if (m) {
+    folder      = m[1].replace(/"+/g,'').trim();
+    attachments = m[2].replace(/"+/g,'').trim();
+    content     = combined.slice(0, m.index);
+  }
+
+  // Clean content: remove surrounding quotes, unescape ""
+  content = content.trim();
+  if (content.charAt(0) === '"') content = content.slice(1);
+  if (content.charAt(content.length-1) === '"') content = content.slice(0,-1);
+  content = content.replace(/""/g, '"').trim();
+
+  return {
+    'CONVERSATION ID':        id,
+    'CONVERSATION TITLE':     title,
+    'FROM':                   from,
+    'SENDER PROFILE URL':     fromUrl,
+    'TO':                     to,
+    'RECIPIENT PROFILE URLS': toUrl,
+    'DATE':                   date,
+    'SUBJECT':                subject,
+    'CONTENT':                content,
+    'FOLDER':                 folder,
+    'ATTACHMENTS':            attachments
+  };
+}
+
+// ── FILTER ENGINE ─────────────────────────────────────────
+document.getElementById('btn-filter').addEventListener('click', function() {
+  if (!csvRows.length) { showToast('Primero carga un archivo CSV','error'); return; }
+  btnFilter.disabled = true; btnFilter.textContent = 'Filtrando...';
+  setTimeout(function(){
+    try {
+      var filters = collectFilters();
+      var outputCols = COLUMN_DEFS.map(function(c){ return c.name; });
+      var matched = [];
+
+      for (var ri = 0; ri < csvRows.length; ri++) {
+        var row = csvRows[ri];
+        var pass = true;
+        for (var col in filters) {
+          var f = filters[col];
+          var cellRaw = row[col] || '';
+          if (f.type === 'text') {
+            var cl = cellRaw.toLowerCase(), v = (f.value||'').toLowerCase();
+            if (f.mode==='contains'    && cl.indexOf(v)===-1)   { pass=false; break; }
+            if (f.mode==='notcontains' && cl.indexOf(v)!==-1)   { pass=false; break; }
+            if (f.mode==='exact'       && cl!==v)                { pass=false; break; }
+            if (f.mode==='startswith'  && cl.indexOf(v)!==0)    { pass=false; break; }
+          } else if (f.type === 'date') {
+            var cd = parseDate(cellRaw);
+            if (!cd) continue;
+            if (f.from && cd < new Date(f.from+'T00:00:00')) { pass=false; break; }
+            if (f.to   && cd > new Date(f.to  +'T23:59:59')) { pass=false; break; }
+          } else if (f.type === 'boolean') {
+            var has = cellRaw.trim().length>0 && cellRaw.trim()!=='0' && cellRaw.trim().toLowerCase()!=='false';
+            if (f.value==='yes'&&!has){ pass=false; break; }
+            if (f.value==='no' && has){ pass=false; break; }
+          }
+        }
+        if (pass) matched.push(row);
+      }
+
+      // Sort results by DATE descending (most recent first)
+      matched.sort(function(a, b) {
+        var da = a['DATE'] ? new Date(a['DATE'].replace(' UTC','')) : new Date(0);
+        var db = b['DATE'] ? new Date(b['DATE'].replace(' UTC','')) : new Date(0);
+        return db - da;
+      });
+
+      // Build output CSV
+      var outRows = [outputCols.join(',')];
+      matched.forEach(function(row){
+        outRows.push(outputCols.map(function(c){ return escapeCsvCell(row[c]||''); }).join(','));
+      });
+      filteredCsv = outRows.join('\n');
+
+      document.getElementById('stat-match').textContent = matched.length.toLocaleString();
+      document.getElementById('stat-total').textContent  = csvRows.length.toLocaleString();
+      document.getElementById('results-thead').innerHTML =
+        '<tr>'+outputCols.map(function(c){ return '<th>'+c+'</th>'; }).join('')+'</tr>';
+      document.getElementById('results-tbody').innerHTML = matched.slice(0,200).map(function(row){
+        return '<tr>'+outputCols.map(function(c){
+          var v = escHtml(row[c]||'');
+          return '<td title="'+v+'">'+v+'</td>';
+        }).join('')+'</tr>';
+      }).join('');
+
+      var sec = document.getElementById('results-section');
+      sec.classList.add('visible');
+      sec.scrollIntoView({behavior:'smooth',block:'start'});
+      showToast(matched.length.toLocaleString()+' filas encontradas','success');
+    } catch(err) {
+      showToast('Error: '+err.message,'error');
+    } finally {
+      btnFilter.disabled = false;
+      btnFilter.innerHTML = '&#x26A1; Aplicar filtros';
+    }
+  }, 30);
+});
+
+document.getElementById('btn-download').addEventListener('click',function(){
+  if (!filteredCsv) return;
+  var blob = new Blob(['\uFEFF'+filteredCsv],{type:'text/csv;charset=utf-8;'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href=url; a.download='filtered_'+Date.now()+'.csv'; a.click(); URL.revokeObjectURL(url);
+});
+
+// ── FILTER UI ─────────────────────────────────────────────
+function buildFilterUI() {
+  var grid = document.getElementById('filter-grid');
+  COLUMN_DEFS.forEach(function(col){
+    filterState[col.name] = {active:false};
+    var block = document.createElement('div');
+    block.className = 'filter-block'; block.id = 'fb_'+sid(col.name);
+    block.innerHTML =
+      '<div class="filter-block-header">'+
+        '<span class="filter-col-name">'+col.name+'</span>'+
+        '<button class="filter-clear-btn" onclick="clearFilter(\''+col.name+'\')">x limpiar</button>'+
+      '</div>'+
+      '<div id="fbody_'+sid(col.name)+'"></div>';
+    grid.appendChild(block);
+    renderFilterBody(col);
+  });
+}
+function renderFilterBody(col){
+  var body = document.getElementById('fbody_'+sid(col.name));
+  if      (col.type==='text')    renderTextFilter(body,col.name);
+  else if (col.type==='date')    renderDateFilter(body,col.name);
+  else if (col.type==='select')  renderSelectFilter(body,col.name,col.options);
+  else if (col.type==='boolean') renderBoolFilter(body,col.name);
+}
+function renderTextFilter(body,col){
+  var modes=[{k:'contains',l:'Contiene'},{k:'exact',l:'Exacto'},{k:'startswith',l:'Empieza'},{k:'notcontains',l:'Excluye'}];
+  var html='<div class="filter-mode-tabs">';
+  modes.forEach(function(m,i){ html+='<button class="filter-mode-tab'+(i===0?' active':'')+'" onclick="setTextMode(\''+col+'\',\''+m.k+'\',this)">'+m.l+'</button>'; });
+  html+='</div><div class="filter-inputs"><input type="text" id="ti_'+sid(col)+'" placeholder="Escribe aqui..." oninput="onTextInput(\''+col+'\')" /></div>';
+  body.innerHTML=html; filterState[col].textMode='contains';
+}
+function setTextMode(col,mode,btn){
+  filterState[col].textMode=mode;
+  btn.closest('.filter-mode-tabs').querySelectorAll('.filter-mode-tab').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active'); onTextInput(col);
+}
+function onTextInput(col){ var v=document.getElementById('ti_'+sid(col)).value.trim(); filterState[col].value=v; setActive(col,v.length>0); updateSummary(); }
+function renderDateFilter(body,col){
+  var presets=[{k:'today',l:'Hoy'},{k:'7d',l:'7 dias'},{k:'1m',l:'1 mes'},{k:'3m',l:'3 meses'},{k:'6m',l:'6 meses'},{k:'year',l:'Este año'}];
+  var html='<div class="filter-inputs"><div class="date-range-row"><div><label>Desde</label><input type="date" id="ds_'+sid(col)+'" onchange="onDateChange(\''+col+'\')" /></div><div><label>Hasta</label><input type="date" id="de_'+sid(col)+'" onchange="onDateChange(\''+col+'\')" /></div></div><div class="quick-dates">';
+  presets.forEach(function(p){ html+='<button class="qd-btn" onclick="applyPreset(\''+col+'\',\''+p.k+'\',this)">'+p.l+'</button>'; });
+  html+='</div></div>'; body.innerHTML=html;
+}
+function applyPreset(col,preset,btn){
+  var now=new Date(); var from=new Date();
+  var btns=btn.closest('.quick-dates').querySelectorAll('.qd-btn');
+  if(filterState[col].preset===preset){
+    btns.forEach(function(b){b.classList.remove('selected');}); filterState[col]={active:false};
+    document.getElementById('ds_'+sid(col)).value=''; document.getElementById('de_'+sid(col)).value='';
+    setActive(col,false); updateSummary(); return;
+  }
+  btns.forEach(function(b){b.classList.remove('selected');}); btn.classList.add('selected');
+  filterState[col].preset=preset;
+  if      (preset==='today'){from=new Date(now);from.setHours(0,0,0,0);}
+  else if (preset==='7d')   {from.setDate(now.getDate()-7);}
+  else if (preset==='1m')   {from.setMonth(now.getMonth()-1);}
+  else if (preset==='3m')   {from.setMonth(now.getMonth()-3);}
+  else if (preset==='6m')   {from.setMonth(now.getMonth()-6);}
+  else if (preset==='year') {from=new Date(now.getFullYear(),0,1);}
+  var f=fmtDate(from),t=fmtDate(now);
+  document.getElementById('ds_'+sid(col)).value=f; document.getElementById('de_'+sid(col)).value=t;
+  filterState[col].dateFrom=f; filterState[col].dateTo=t; setActive(col,true); updateSummary();
+}
+function onDateChange(col){
+  var f=document.getElementById('ds_'+sid(col)).value, t=document.getElementById('de_'+sid(col)).value;
+  filterState[col].dateFrom=f||null; filterState[col].dateTo=t||null; filterState[col].preset=null;
+  document.querySelectorAll('#fbody_'+sid(col)+' .qd-btn').forEach(function(b){b.classList.remove('selected');});
+  setActive(col,!!(f||t)); updateSummary();
+}
+function renderSelectFilter(body,col,opts){
+  var html='<div class="filter-inputs"><select id="sl_'+sid(col)+'" onchange="onSelectChange(\''+col+'\')"><option value="">- Todos -</option>';
+  opts.forEach(function(o){html+='<option value="'+o+'">'+o+'</option>';});
+  html+='</select></div>'; body.innerHTML=html;
+}
+function onSelectChange(col){var v=document.getElementById('sl_'+sid(col)).value; filterState[col].value=v; setActive(col,v.length>0); updateSummary();}
+function renderBoolFilter(body,col){
+  body.innerHTML='<div class="filter-inputs"><select id="bl_'+sid(col)+'" onchange="onBoolChange(\''+col+'\')"><option value="">- Todos -</option><option value="yes">Con adjuntos</option><option value="no">Sin adjuntos</option></select></div>';
+}
+function onBoolChange(col){var v=document.getElementById('bl_'+sid(col)).value; filterState[col].value=v; setActive(col,v.length>0); updateSummary();}
+function setActive(col,on){filterState[col].active=on; var b=document.getElementById('fb_'+sid(col)); if(on)b.classList.add('active');else b.classList.remove('active');}
+function clearFilter(col){
+  filterState[col]={active:false};
+  var def=null; for(var i=0;i<COLUMN_DEFS.length;i++){if(COLUMN_DEFS[i].name===col){def=COLUMN_DEFS[i];break;}}
+  renderFilterBody(def); setActive(col,false); updateSummary();
+}
+document.getElementById('btn-clear-all').addEventListener('click',function(){COLUMN_DEFS.forEach(function(c){clearFilter(c.name);});});
+function updateSummary(){
+  var active=COLUMN_DEFS.filter(function(c){return filterState[c.name].active;});
+  var sum=document.getElementById('active-filters-summary');
+  if(!active.length){sum.classList.remove('visible');return;}
+  sum.classList.add('visible');
+  var ml={contains:'contiene',exact:'exacto',startswith:'empieza',notcontains:'excluye'};
+  document.getElementById('summary-tags').innerHTML=active.map(function(c){
+    var s=filterState[c.name],l=c.name+': ';
+    if(c.type==='date')    l+=(s.preset||((s.dateFrom||'...')+' -> '+(s.dateTo||'...')));
+    else if(c.type==='boolean') l+=(s.value==='yes'?'Con adjuntos':'Sin adjuntos');
+    else l+=(ml[s.textMode||'contains']||'contiene')+' "'+s.value+'"';
+    return '<span class="filter-tag">'+l+'</span>';
+  }).join('');
+}
+function collectFilters(){
+  var out={};
+  COLUMN_DEFS.forEach(function(c){
+    var s=filterState[c.name]; if(!s.active)return;
+    if      (c.type==='text')    out[c.name]={type:'text',   mode:s.textMode||'contains',value:s.value};
+    else if (c.type==='date')    out[c.name]={type:'date',   from:s.dateFrom||null,to:s.dateTo||null};
+    else if (c.type==='select')  out[c.name]={type:'text',   mode:'exact',value:s.value};
+    else if (c.type==='boolean') out[c.name]={type:'boolean',value:s.value};
+  });
+  return out;
+}
+
+// ── UTILITIES ─────────────────────────────────────────────
+function parseCsvLine(line) {
+  var r = [], c = '', q = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (ch === '"') {
+      if (q && i + 1 < line.length && line[i+1] === '"') { c += '"'; i++; }
+      else q = !q;
+    } else if (ch === ',' && !q) { r.push(c); c = ''; }
+    else c += ch;
+  }
+  r.push(c);
+  return r;
+}
+function sid(s){return s.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');}
+function fmtDate(d){return d.toISOString().split('T')[0];}
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function setProgress(pct,label){progressBar.style.width=pct+'%';progressPct.textContent=pct+'%';progressTxt.textContent=label;}
+function escapeCsvCell(v){if(v.indexOf(',')!==-1||v.indexOf('"')!==-1||v.indexOf('\n')!==-1){return'"'+v.replace(/"/g,'""')+'"';}return v;}
+function parseDate(str){
+  if(!str||!str.trim())return null; str=str.trim();
+  var d=new Date(str); if(!isNaN(d.getTime()))return d;
+  var m=str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if(m){d=new Date(+m[3],+m[2]-1,+m[1]);if(!isNaN(d.getTime()))return d;}
+  return null;
+}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+var toastTimer;
+function showToast(msg,type){type=type||'success';var t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.className='';},4000);}
+
+buildFilterUI();
+</script>
+</body>
+</html>
