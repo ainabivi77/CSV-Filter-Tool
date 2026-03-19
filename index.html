@@ -130,11 +130,11 @@
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px;">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font-mono);font-size:.82rem;">
         <input type="checkbox" id="chk-no-reply-days" style="accent-color:var(--accent);width:15px;height:15px;"/>
-        The other person wrote more than
+        Pending reply &mdash; last message older than
       </label>
       <input type="number" id="days-input" value="7" min="1" max="365"
         style="width:64px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:var(--font-mono);font-size:.85rem;padding:6px 10px;outline:none;text-align:center;"/>
-      <span style="font-family:var(--font-mono);font-size:.82rem;">days ago and I have not replied</span>
+      <span style="font-family:var(--font-mono);font-size:.82rem;">days</span>
     </div>
     <div class="btn-row">
       <button class="btn btn-primary" id="btn-unanswered" disabled>&#x1F50D; Find unanswered</button>
@@ -743,7 +743,7 @@ document.getElementById('btn-unanswered').addEventListener('click', function() {
 
   var label = [];
   if (neverReplied) label.push('never replied');
-  if (noReplyDays)  label.push('no reply +'+days+' days');
+  if (noReplyDays)  label.push('pending reply +'+days+' days');
   showToast(matched.length.toLocaleString() + ' conversations ' + label.join(' / '), 'success');
 });
 
