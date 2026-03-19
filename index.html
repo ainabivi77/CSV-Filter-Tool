@@ -85,43 +85,71 @@
 <div class="wrapper">
   <header>
     <div class="logo-row"><div class="logo-icon">&#x26A1;</div><h1>CSV <span>Filter</span> Tool</h1></div>
-    <p class="subtitle">// LinkedIn messages export &middot; procesado 100% local</p>
+    <p class="subtitle">// LinkedIn messages export &middot; 100% client-side &middot; no uploads</p>
   </header>
 
   <div class="card">
-    <div class="card-title">01 &mdash; Cargar archivo CSV</div>
+    <div class="card-title">01 &mdash; Load CSV file</div>
     <div id="drop-zone">
       <input type="file" id="csv-input" accept=".csv"/>
       <div class="drop-icon">&#x1F4C2;</div>
-      <div class="drop-text">Arrastra tu CSV aqui o haz clic para seleccionar</div>
-      <div class="drop-sub">Procesado en tu navegador &middot; no se sube a ningun servidor</div>
+      <div class="drop-text">Drag your CSV here or click to select</div>
+      <div class="drop-sub">Processed in your browser &middot; no data uploaded</div>
     </div>
     <div id="file-info"><span>&#x1F4C4;</span><span id="file-name-label"></span><span id="file-size-label" style="color:var(--muted)"></span><button id="btn-remove-file" onclick="removeFile()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;margin-left:8px;font-family:var(--font-mono);transition:color var(--trans);" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--muted)'">&#x2715;</button></div>
     <div id="progress-section">
-      <div class="progress-label"><span id="progress-text">Leyendo...</span><span id="progress-pct">0%</span></div>
+      <div class="progress-label"><span id="progress-text">Reading...</span><span id="progress-pct">0%</span></div>
       <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-bar"></div></div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">02 &mdash; Filtros</div>
+    <div class="card-title">02 &mdash; Filters</div>
     <div class="filter-grid" id="filter-grid"></div>
-    <div id="active-filters-summary"><span class="summary-label">Filtros activos:&nbsp;</span><span id="summary-tags"></span></div>
+    <div id="active-filters-summary"><span class="summary-label">Active filters:&nbsp;</span><span id="summary-tags"></span></div>
     <div class="btn-row">
-      <button class="btn btn-primary" id="btn-filter" disabled>&#x26A1; Aplicar filtros</button>
-      <button class="btn btn-secondary" id="btn-clear-all">&#x2715; Limpiar todo</button>
+      <button class="btn btn-primary" id="btn-filter" disabled>&#x26A1; Apply filters</button>
+      <button class="btn btn-secondary" id="btn-clear-all">&#x2715; Clear all</button>
+    </div>
+  </div>
+
+  <!-- UNANSWERED FILTER -->
+  <div class="card" id="unanswered-card">
+    <div class="card-title">03 &mdash; Unanswered messages</div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.65rem;font-family:var(--font-mono);color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px;">Your name in the CSV (FROM column)</label>
+      <input type="text" id="my-name-input" placeholder="e.g. Thomas Schulz" value="Thomas Schulz"
+        style="width:100%;max-width:340px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:.82rem;padding:9px 14px;outline:none;"/>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font-mono);font-size:.82rem;">
+        <input type="checkbox" id="chk-never-replied" style="accent-color:var(--accent);width:15px;height:15px;"/>
+        Conversations where <strong style="color:var(--accent)">I never replied</strong>
+      </label>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font-mono);font-size:.82rem;">
+        <input type="checkbox" id="chk-no-reply-days" style="accent-color:var(--accent);width:15px;height:15px;"/>
+        The other person wrote more than
+      </label>
+      <input type="number" id="days-input" value="7" min="1" max="365"
+        style="width:64px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:var(--font-mono);font-size:.85rem;padding:6px 10px;outline:none;text-align:center;"/>
+      <span style="font-family:var(--font-mono);font-size:.82rem;">days ago and I have not replied</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-unanswered" disabled>&#x1F50D; Find unanswered</button>
     </div>
   </div>
 
   <div class="card" id="results-section">
-    <div class="card-title">03 &mdash; Resultados</div>
+    <div class="card-title">04 &mdash; Results</div>
     <div class="stats-row">
-      <div class="stat-chip">Encontradas: <span class="num" id="stat-match">-</span></div>
+      <div class="stat-chip">Found: <span class="num" id="stat-match">-</span></div>
       <div class="stat-chip">Total: <span class="num" id="stat-total">-</span></div>
     </div>
     <div class="table-wrap"><table><thead id="results-thead"></thead><tbody id="results-tbody"></tbody></table></div>
     <div class="btn-row" style="margin-top:18px;">
-      <button class="btn btn-download" id="btn-download">&#x2B07; Descargar CSV filtrado</button>
+      <button class="btn btn-download" id="btn-download">&#x2B07; Download filtered CSV</button>
     </div>
   </div>
 </div>
@@ -172,26 +200,27 @@ function removeFile() {
   btnFilter.disabled = true;
   document.getElementById('results-section').classList.remove('visible');
   document.getElementById('active-filters-summary').classList.remove('visible');
-  showToast('Archivo eliminado. Carga uno nuevo.', 'success');
+  showToast('File removed. Load a new one.', 'success');
 }
 
 function handleFile(file) {
-  if (!file.name.endsWith('.csv')) { showToast('Solo se aceptan archivos .csv','error'); return; }
+  if (!file.name.endsWith('.csv')) { showToast('Only .csv files are accepted','error'); return; }
   fileNameLbl.textContent = file.name;
   fileSizeLbl.textContent = ' (' + formatSize(file.size) + ')';
   fileInfo.classList.add('visible');
   btnFilter.disabled = true; csvRows = [];
-  progressSec.classList.add('visible'); setProgress(0,'Leyendo archivo...');
+  progressSec.classList.add('visible'); setProgress(0,'Reading file...');
   var reader = new FileReader();
-  reader.onprogress = function(e){ if(e.lengthComputable) setProgress(Math.round((e.loaded/e.total)*80),'Leyendo archivo...'); };
+  reader.onprogress = function(e){ if(e.lengthComputable) setProgress(Math.round((e.loaded/e.total)*80),'Reading file...'); };
   reader.onload = function(e){
-    setProgress(85,'Procesando filas...');
+    setProgress(85,'Processing rows...');
     setTimeout(function(){
       try {
         parseCSV(e.target.result);
-        setProgress(100, csvRows.length.toLocaleString() + ' mensajes cargados');
+        setProgress(100, csvRows.length.toLocaleString() + ' messages loaded');
         btnFilter.disabled = false;
-        showToast(csvRows.length.toLocaleString() + ' mensajes cargados','success');
+        document.getElementById('btn-unanswered').disabled = false;
+        showToast(csvRows.length.toLocaleString() + ' messages loaded','success');
         setTimeout(function(){ progressSec.classList.remove('visible'); }, 1500);
       } catch(err) {
         showToast('Error: ' + err.message,'error');
@@ -199,7 +228,7 @@ function handleFile(file) {
       }
     }, 50);
   };
-  reader.onerror = function(){ showToast('Error al leer el archivo','error'); progressSec.classList.remove('visible'); };
+  reader.onerror = function(){ showToast('Error reading file','error'); progressSec.classList.remove('visible'); };
   reader.readAsText(file,'UTF-8');
 }
 
@@ -227,12 +256,12 @@ function parseCSV(raw) {
   console.log("RAW first 50 chars:", JSON.stringify(raw.substring(0,50)));
   console.log("RAW charCode 0:", raw.charCodeAt(0));
   var lines = raw.split('\n');
-  if (lines.length < 2) throw new Error('El CSV esta vacio.');
+  if (lines.length < 2) throw new Error('The CSV is empty.');
 
   // Verify headers
   var headers = lines[0].replace(/\r/g,"").split(',').map(function(h){ return h.trim().replace(/^"|\"$/g,"").toUpperCase(); });
   var hasRequired = headers.indexOf('CONVERSATION ID') !== -1 && headers.indexOf('FROM') !== -1;
-  if (!hasRequired) throw new Error('No se encontraron las columnas requeridas. Cabeceras: ' + headers.slice(0,4).join(' | '));
+  if (!hasRequired) throw new Error('Required columns not found. Headers: ' + headers.slice(0,4).join(' | '));
 
   // Group lines into blocks: each block starts with a line beginning with "2-"
   var blocks = [];
@@ -253,7 +282,7 @@ function parseCSV(raw) {
   }
   if (current !== null) blocks.push(current);
   console.log("Blocks found:", blocks.length);
-  if (blocks.length === 0) throw new Error("No se detectaron filas validas. Primera linea de datos: " + (lines[1] ? lines[1].substring(0,30) : "vacia"));
+  if (blocks.length === 0) throw new Error("No valid rows detected. First data line: " + (lines[1] ? lines[1].substring(0,30) : "vacia"));
 
   csvRows = [];
   for (var b = 0; b < blocks.length; b++) {
@@ -288,9 +317,14 @@ function parseBlock(block) {
   // - If parts.length < 11: CONTENT continues on next lines
   if (parts.length >= 11) {
     // Fully parsed in one line - extract directly
-    var content     = uq(parts[8]);
+    var content     = uq(parts[8]).replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();
     var folder      = uq(parts[9]);
     var attachments = uq(parts[10]);
+    // Replace %FIRSTNAME% with recipient's first name (TO column)
+    if (content.indexOf('%FIRSTNAME%') !== -1) {
+      var toFirstName = uq(parts[4]).split(' ')[0];
+      content = content.replace(/%FIRSTNAME%/g, toFirstName);
+    }
     return {
       'CONVERSATION ID':        id,
       'CONVERSATION TITLE':     title,
@@ -331,6 +365,13 @@ function parseBlock(block) {
   if (content.charAt(0) === '"') content = content.slice(1);
   if (content.charAt(content.length-1) === '"') content = content.slice(0,-1);
   content = content.replace(/""/g, '"').trim();
+  // Strip HTML tags (LinkedIn sponsored messages contain raw HTML)
+  content = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').trim();
+  // Replace %FIRSTNAME% with recipient's first name (TO column)
+  if (content.indexOf('%FIRSTNAME%') !== -1) {
+    var toFirstName = to.split(' ')[0];
+    content = content.replace(/%FIRSTNAME%/g, toFirstName);
+  }
 
   return {
     'CONVERSATION ID':        id,
@@ -349,8 +390,8 @@ function parseBlock(block) {
 
 // ── FILTER ENGINE ─────────────────────────────────────────
 document.getElementById('btn-filter').addEventListener('click', function() {
-  if (!csvRows.length) { showToast('Primero carga un archivo CSV','error'); return; }
-  btnFilter.disabled = true; btnFilter.textContent = 'Filtrando...';
+  if (!csvRows.length) { showToast('Load a CSV file first','error'); return; }
+  btnFilter.disabled = true; btnFilter.textContent = 'Filtering...';
   setTimeout(function(){
     try {
       var filters = collectFilters();
@@ -411,12 +452,12 @@ document.getElementById('btn-filter').addEventListener('click', function() {
       var sec = document.getElementById('results-section');
       sec.classList.add('visible');
       sec.scrollIntoView({behavior:'smooth',block:'start'});
-      showToast(matched.length.toLocaleString()+' filas encontradas','success');
+      showToast(matched.length.toLocaleString()+' rows found','success');
     } catch(err) {
       showToast('Error: '+err.message,'error');
     } finally {
       btnFilter.disabled = false;
-      btnFilter.innerHTML = '&#x26A1; Aplicar filtros';
+      btnFilter.innerHTML = '&#x26A1; Apply filters';
     }
   }, 30);
 });
@@ -439,7 +480,7 @@ function buildFilterUI() {
     block.innerHTML =
       '<div class="filter-block-header">'+
         '<span class="filter-col-name">'+col.name+'</span>'+
-        '<button class="filter-clear-btn" onclick="clearFilter(\''+col.name+'\')">x limpiar</button>'+
+        '<button class="filter-clear-btn" onclick="clearFilter(\''+col.name+'\')">x clear</button>'+
       '</div>'+
       '<div id="fbody_'+sid(col.name)+'"></div>';
     grid.appendChild(block);
@@ -454,7 +495,7 @@ function renderFilterBody(col){
   else if (col.type==='boolean') renderBoolFilter(body,col.name);
 }
 function renderTextFilter(body,col){
-  var modes=[{k:'contains',l:'Contiene'},{k:'exact',l:'Exacto'},{k:'startswith',l:'Empieza'},{k:'notcontains',l:'Excluye'}];
+  var modes=[{k:'contains',l:'Contains'},{k:'exact',l:'Exact'},{k:'startswith',l:'Starts'},{k:'notcontains',l:'Excludes'}];
   var html='<div class="filter-mode-tabs">';
   modes.forEach(function(m,i){ html+='<button class="filter-mode-tab'+(i===0?' active':'')+'" onclick="setTextMode(\''+col+'\',\''+m.k+'\',this)">'+m.l+'</button>'; });
   html+='</div><div class="filter-inputs"><input type="text" id="ti_'+sid(col)+'" placeholder="Escribe aqui..." oninput="onTextInput(\''+col+'\')" /></div>';
@@ -467,8 +508,8 @@ function setTextMode(col,mode,btn){
 }
 function onTextInput(col){ var v=document.getElementById('ti_'+sid(col)).value.trim(); filterState[col].value=v; setActive(col,v.length>0); updateSummary(); }
 function renderDateFilter(body,col){
-  var presets=[{k:'today',l:'Hoy'},{k:'7d',l:'7 dias'},{k:'1m',l:'1 mes'},{k:'3m',l:'3 meses'},{k:'6m',l:'6 meses'},{k:'year',l:'Este año'}];
-  var html='<div class="filter-inputs"><div class="date-range-row"><div><label>Desde</label><input type="date" id="ds_'+sid(col)+'" onchange="onDateChange(\''+col+'\')" /></div><div><label>Hasta</label><input type="date" id="de_'+sid(col)+'" onchange="onDateChange(\''+col+'\')" /></div></div><div class="quick-dates">';
+  var presets=[{k:'today',l:'Today'},{k:'7d',l:'7 days'},{k:'1m',l:'1 month'},{k:'3m',l:'3 months'},{k:'6m',l:'6 months'},{k:'year',l:'This year'}];
+  var html='<div class="filter-inputs"><div class="date-range-row"><div><label>From</label><input type="date" id="ds_'+sid(col)+'" onchange="onDateChange(\''+col+'\')" /></div><div><label>To</label><input type="date" id="de_'+sid(col)+'" onchange="onDateChange(\''+col+'\')" /></div></div><div class="quick-dates">';
   presets.forEach(function(p){ html+='<button class="qd-btn" onclick="applyPreset(\''+col+'\',\''+p.k+'\',this)">'+p.l+'</button>'; });
   html+='</div></div>'; body.innerHTML=html;
 }
@@ -499,13 +540,13 @@ function onDateChange(col){
   setActive(col,!!(f||t)); updateSummary();
 }
 function renderSelectFilter(body,col,opts){
-  var html='<div class="filter-inputs"><select id="sl_'+sid(col)+'" onchange="onSelectChange(\''+col+'\')"><option value="">- Todos -</option>';
+  var html='<div class="filter-inputs"><select id="sl_'+sid(col)+'" onchange="onSelectChange(\''+col+'\')"><option value="">- All -</option>';
   opts.forEach(function(o){html+='<option value="'+o+'">'+o+'</option>';});
   html+='</select></div>'; body.innerHTML=html;
 }
 function onSelectChange(col){var v=document.getElementById('sl_'+sid(col)).value; filterState[col].value=v; setActive(col,v.length>0); updateSummary();}
 function renderBoolFilter(body,col){
-  body.innerHTML='<div class="filter-inputs"><select id="bl_'+sid(col)+'" onchange="onBoolChange(\''+col+'\')"><option value="">- Todos -</option><option value="yes">Con adjuntos</option><option value="no">Sin adjuntos</option></select></div>';
+  body.innerHTML='<div class="filter-inputs"><select id="bl_'+sid(col)+'" onchange="onBoolChange(\''+col+'\')"><option value="">- All -</option><option value="yes">With attachments</option><option value="no">No attachments</option></select></div>';
 }
 function onBoolChange(col){var v=document.getElementById('bl_'+sid(col)).value; filterState[col].value=v; setActive(col,v.length>0); updateSummary();}
 function setActive(col,on){filterState[col].active=on; var b=document.getElementById('fb_'+sid(col)); if(on)b.classList.add('active');else b.classList.remove('active');}
@@ -520,12 +561,12 @@ function updateSummary(){
   var sum=document.getElementById('active-filters-summary');
   if(!active.length){sum.classList.remove('visible');return;}
   sum.classList.add('visible');
-  var ml={contains:'contiene',exact:'exacto',startswith:'empieza',notcontains:'excluye'};
+  var ml={contains:'contains',exact:'exact',startswith:'starts',notcontains:'excludes'};
   document.getElementById('summary-tags').innerHTML=active.map(function(c){
     var s=filterState[c.name],l=c.name+': ';
     if(c.type==='date')    l+=(s.preset||((s.dateFrom||'...')+' -> '+(s.dateTo||'...')));
-    else if(c.type==='boolean') l+=(s.value==='yes'?'Con adjuntos':'Sin adjuntos');
-    else l+=(ml[s.textMode||'contains']||'contiene')+' "'+s.value+'"';
+    else if(c.type==='boolean') l+=(s.value==='yes'?'With attachments':'No attachments');
+    else l+=(ml[s.textMode||'contains']||'contains')+' "'+s.value+'"';
     return '<span class="filter-tag">'+l+'</span>';
   }).join('');
 }
@@ -559,7 +600,15 @@ function sid(s){return s.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');}
 function fmtDate(d){return d.toISOString().split('T')[0];}
 function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
 function setProgress(pct,label){progressBar.style.width=pct+'%';progressPct.textContent=pct+'%';progressTxt.textContent=label;}
-function escapeCsvCell(v){if(v.indexOf(',')!==-1||v.indexOf('"')!==-1||v.indexOf('\n')!==-1){return'"'+v.replace(/"/g,'""')+'"';}return v;}
+function escapeCsvCell(v){
+  // Replace real newlines with a space to keep each row on a single line
+  // This prevents broken CSV rows when CONTENT has multiline text
+  v = v.replace(/\r\n/g,' ').replace(/\n/g,' ').replace(/\r/g,' ');
+  // Strip HTML tags from content (LinkedIn sponsored messages contain HTML)
+  v = v.replace(/<[^>]*>/g,'').trim();
+  if(v.indexOf(',')!==-1||v.indexOf('"')!==-1){return'"'+v.replace(/"/g,'""')+'"';}
+  return v;
+}
 function parseDate(str){
   if(!str||!str.trim())return null; str=str.trim();
   var d=new Date(str); if(!isNaN(d.getTime()))return d;
@@ -570,6 +619,133 @@ function parseDate(str){
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 var toastTimer;
 function showToast(msg,type){type=type||'success';var t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.className='';},4000);}
+
+// ── UNANSWERED FILTER LOGIC ──────────────────────────────
+document.getElementById('btn-unanswered').addEventListener('click', function() {
+  if (!csvRows.length) { showToast('Load a CSV file first','error'); return; }
+
+  var myName = document.getElementById('my-name-input').value.trim().toLowerCase();
+  if (!myName) { showToast('Enter your name to identify your messages','error'); return; }
+
+  var neverReplied  = document.getElementById('chk-never-replied').checked;
+  var noReplyDays   = document.getElementById('chk-no-reply-days').checked;
+  var days          = parseInt(document.getElementById('days-input').value) || 7;
+
+  if (!neverReplied && !noReplyDays) {
+    showToast('Select at least one search option','error'); return;
+  }
+
+  // Apply any active filters from section 02 first
+  var activeFilters = collectFilters();
+  var hasActiveFilters = Object.keys(activeFilters).length > 0;
+
+  var baseRows = csvRows;
+  if (hasActiveFilters) {
+    baseRows = csvRows.filter(function(row) {
+      for (var col in activeFilters) {
+        var f = activeFilters[col];
+        var cellRaw = row[col] || '';
+        if (f.type === 'text') {
+          var cl = cellRaw.toLowerCase(), v = (f.value||'').toLowerCase();
+          if (f.mode==='contains'    && cl.indexOf(v)===-1)   return false;
+          if (f.mode==='notcontains' && cl.indexOf(v)!==-1)   return false;
+          if (f.mode==='exact'       && cl!==v)                return false;
+          if (f.mode==='startswith'  && cl.indexOf(v)!==0)    return false;
+        } else if (f.type === 'date') {
+          var cd = parseDate(cellRaw);
+          if (!cd) return false;
+          if (f.from && cd < new Date(f.from+'T00:00:00')) return false;
+          if (f.to   && cd > new Date(f.to  +'T23:59:59')) return false;
+        } else if (f.type === 'boolean') {
+          var has = cellRaw.trim().length>0 && cellRaw.trim()!=='0' && cellRaw.trim().toLowerCase()!=='false';
+          if (f.value==='yes'&&!has) return false;
+          if (f.value==='no' && has) return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  // Group messages by CONVERSATION ID (using pre-filtered rows)
+  var convMap = {};
+  for (var i = 0; i < baseRows.length; i++) {
+    var row = baseRows[i];
+    var cid = row['CONVERSATION ID'];
+    if (!cid) continue;
+    if (!convMap[cid]) convMap[cid] = [];
+    convMap[cid].push(row);
+  }
+
+  // Sort each conversation by date ascending (oldest first) to find last message
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+
+  var matched = [];
+
+  for (var cid in convMap) {
+    var msgs = convMap[cid];
+    // Sort ascending to find chronological order
+    msgs.sort(function(a,b){
+      var da = a['DATE'] ? new Date(a['DATE'].replace(' UTC','')) : new Date(0);
+      var db = b['DATE'] ? new Date(b['DATE'].replace(' UTC','')) : new Date(0);
+      return da - db;
+    });
+
+    var lastMsg   = msgs[msgs.length - 1];
+    var lastFrom  = (lastMsg['FROM'] || '').toLowerCase();
+    var lastDate  = lastMsg['DATE'] ? new Date(lastMsg['DATE'].replace(' UTC','')) : null;
+    var iHaveSent = msgs.some(function(m){ return (m['FROM']||'').toLowerCase() === myName; });
+    var lastIsOther = lastFrom !== myName;
+
+    // Option 1: never replied — other sent messages but I never replied
+    if (neverReplied && !iHaveSent) {
+      // Add the last message of the conversation as representative row
+      matched.push(lastMsg);
+      continue;
+    }
+
+    // Option 2: last message is from other and is older than X days
+    if (noReplyDays && lastIsOther && lastDate && lastDate < cutoff) {
+      matched.push(lastMsg);
+    }
+  }
+
+  // Sort results by date descending
+  matched.sort(function(a,b){
+    var da = a['DATE'] ? new Date(a['DATE'].replace(' UTC','')) : new Date(0);
+    var db = b['DATE'] ? new Date(b['DATE'].replace(' UTC','')) : new Date(0);
+    return db - da;
+  });
+
+  // Build output CSV
+  var outputCols = ['CONVERSATION ID','CONVERSATION TITLE','FROM','SENDER PROFILE URL','TO','RECIPIENT PROFILE URLS','DATE','SUBJECT','CONTENT','FOLDER','ATTACHMENTS'];
+  var outRows = [outputCols.join(',')];
+  matched.forEach(function(row){
+    outRows.push(outputCols.map(function(c){ return escapeCsvCell(row[c]||''); }).join(','));
+  });
+  filteredCsv = outRows.join('\n');
+
+  // Show results
+  document.getElementById('stat-match').textContent = matched.length.toLocaleString();
+  document.getElementById('stat-total').textContent  = Object.keys(convMap).length.toLocaleString() + ' convs.';
+  document.getElementById('results-thead').innerHTML =
+    '<tr>'+outputCols.map(function(c){ return '<th>'+c+'</th>'; }).join('')+'</tr>';
+  document.getElementById('results-tbody').innerHTML = matched.slice(0,200).map(function(row){
+    return '<tr>'+outputCols.map(function(c){
+      var v = escHtml(row[c]||'');
+      return '<td title="'+v+'">'+v+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+
+  var sec = document.getElementById('results-section');
+  sec.classList.add('visible');
+  sec.scrollIntoView({behavior:'smooth',block:'start'});
+
+  var label = [];
+  if (neverReplied) label.push('never replied');
+  if (noReplyDays)  label.push('no reply +'+days+' days');
+  showToast(matched.length.toLocaleString() + ' conversations ' + label.join(' / '), 'success');
+});
 
 buildFilterUI();
 </script>
